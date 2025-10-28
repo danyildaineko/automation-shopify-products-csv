@@ -188,45 +188,58 @@ function readSKUsFromSource(suite) {
     // Read from active spreadsheet (same file), not source file
     const activeSS = SpreadsheetApp.getActiveSpreadsheet();
     const skuSheet = activeSS.getSheetByName(suite.skuSheet);
-    
+
     if (!skuSheet) {
       Logger.log(`⚠️ SKU sheet "${suite.skuSheet}" not found`);
       return {};
     }
-    
+
     const lastRow = skuSheet.getLastRow();
     Logger.log(`📦 SKU sheet has ${lastRow} rows`);
-    
+
     if (lastRow < 2) return {};
-    
+
+    // Read columns A (handle) and R (SKU)
     const data = skuSheet.getRange(2, 1, lastRow - 1, 18).getValues();
 
-    // Debug: check first row
-    if (data.length > 0) {
-      Logger.log(`📦 DEBUG First row column J (index 9): "${data[0][9]}"`);
-      Logger.log(`📦 DEBUG First row column R (index 17): "${data[0][17]}"`);
-      Logger.log(`📦 DEBUG First row has ${data[0].length} columns`);
-    }
-
     const skuMap = {};
-    let mapped = 0;
+    const handleCounts = {};
+    let totalMapped = 0;
 
     data.forEach(row => {
-      const size = row[9];  // Column J
-      const sku = row[17];  // Column R
+      const handle = row[0];  // Column A
+      const sku = row[17];    // Column R
 
-      if (size && sku) {
-        skuMap[size.toString().trim()] = sku.toString().trim();
-        mapped++;
-        if (mapped <= 3) {
-          Logger.log(`  Sample: ${size} -> ${sku}`);
+      if (handle && sku) {
+        const cleanHandle = handle.toString().trim();
+        const cleanSku = sku.toString().trim();
+
+        // Initialize array for new handle
+        if (!skuMap[cleanHandle]) {
+          skuMap[cleanHandle] = [];
+          handleCounts[cleanHandle] = 0;
+        }
+
+        // Only keep first suite.sectionSize SKUs per handle (memory optimization)
+        if (handleCounts[cleanHandle] < suite.sectionSize) {
+          skuMap[cleanHandle].push(cleanSku);
+          handleCounts[cleanHandle]++;
+          totalMapped++;
         }
       }
     });
-    
-    Logger.log(`📦 Loaded ${Object.keys(skuMap).length} SKU mappings from "${suite.skuSheet}"`);
+
+    const handleCount = Object.keys(skuMap).length;
+    Logger.log(`📦 Loaded ${totalMapped} SKUs for ${handleCount} handles from "${suite.skuSheet}"`);
+
+    // Show sample
+    if (handleCount > 0) {
+      const sampleHandle = Object.keys(skuMap)[0];
+      Logger.log(`  Sample: ${sampleHandle} -> [${skuMap[sampleHandle].slice(0, 3).join(', ')}...]`);
+    }
+
     return skuMap;
-    
+
   } catch (e) {
     Logger.log(`⚠️ Error reading SKUs: ${e.message}`);
     return {};
@@ -503,10 +516,10 @@ function copyBriefs(suite) {
       }
       
       fillVariantData(outputData[currentRow], isFirst, isLast, sizeData);
-      
-      // SKU mapping
-      if (sizeData?.size && skuMap[sizeData.size]) {
-        outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[sizeData.size];
+
+      // SKU mapping by handle and variant index
+      if (skuMap[handle] && skuMap[handle][j]) {
+        outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[handle][j];
       }
 
       // Variant images mapping
