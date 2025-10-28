@@ -216,8 +216,11 @@ function readSKUsFromSource(suite) {
       const sku = row[17];    // Column R
 
       if (handle && sku) {
-        const cleanHandle = handle.toString().trim();
+        let cleanHandle = handle.toString().trim();
         const cleanSku = sku.toString().trim();
+
+        // Remove common suffixes (-exterior, -test, -ext, etc.) to match base handles
+        cleanHandle = cleanHandle.replace(/-(exterior|test|ext|int|interior)$/i, '');
 
         // Initialize array for new handle
         if (!skuMap[cleanHandle]) {
