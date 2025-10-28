@@ -199,14 +199,21 @@ function readSKUsFromSource(suite) {
     if (lastRow < 2) return {};
     
     const data = skuSheet.getRange(2, 1, lastRow - 1, 18).getValues();
-    
+
+    // Debug: check first row
+    if (data.length > 0) {
+      Logger.log(`📦 DEBUG First row column J (index 9): "${data[0][9]}"`);
+      Logger.log(`📦 DEBUG First row column R (index 17): "${data[0][17]}"`);
+      Logger.log(`📦 DEBUG First row has ${data[0].length} columns`);
+    }
+
     const skuMap = {};
     let mapped = 0;
-    
+
     data.forEach(row => {
       const size = row[9];  // Column J
       const sku = row[17];  // Column R
-      
+
       if (size && sku) {
         skuMap[size.toString().trim()] = sku.toString().trim();
         mapped++;
