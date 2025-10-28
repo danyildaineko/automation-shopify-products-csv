@@ -96,21 +96,26 @@ const SHOPIFY_HEADERS = [
 function readSuites() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Suites');
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
-  
+
   return data
     .filter(row => row[1] === true)
-    .map(row => ({
-      id: row[0],
-      name: row[2],
-      destSheet: row[3],
-      sourceFileId: row[4],
-      sourceSheet: row[5],
-      startRow: row[6],
-      endRow: row[7],
-      handleSuffix: row[8],
-      sectionSize: row[9],
-      skuSheet: row[10] || null
-    }));
+    .map(row => {
+      // Debug: log what's in column K
+      Logger.log(`🔍 Suite "${row[2]}" - Column K (row[10]): "${row[10]}" (type: ${typeof row[10]}, length: ${row[10]?.length})`);
+
+      return {
+        id: row[0],
+        name: row[2],
+        destSheet: row[3],
+        sourceFileId: row[4],
+        sourceSheet: row[5],
+        startRow: row[6],
+        endRow: row[7],
+        handleSuffix: row[8],
+        sectionSize: row[9],
+        skuSheet: row[10] || null
+      };
+    });
 }
 
 function runSuite() {
