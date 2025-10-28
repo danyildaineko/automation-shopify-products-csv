@@ -178,15 +178,16 @@ function readSizesFromSource(suite) {
 // ============================================
 function readSKUsFromSource(suite) {
   Logger.log(`📦 SKU sheet config: "${suite.skuSheet}"`);
-  
+
   if (!suite.skuSheet) {
     Logger.log('📦 No SKU sheet configured - skipping');
     return {};
   }
-  
+
   try {
-    const sourceSS = SpreadsheetApp.openById(suite.sourceFileId);
-    const skuSheet = sourceSS.getSheetByName(suite.skuSheet);
+    // Read from active spreadsheet (same file), not source file
+    const activeSS = SpreadsheetApp.getActiveSpreadsheet();
+    const skuSheet = activeSS.getSheetByName(suite.skuSheet);
     
     if (!skuSheet) {
       Logger.log(`⚠️ SKU sheet "${suite.skuSheet}" not found`);
