@@ -95,7 +95,7 @@ const SHOPIFY_HEADERS = [
 // ============================================
 function readSuites() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Suites');
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
   
   return data
     .filter(row => row[1] === true)
