@@ -487,11 +487,12 @@ function copyBriefs(suite) {
     const handleWithoutSuffix = generateHandle(row[0], row[3], ''); // For SKU lookup
     const productImages = getProductImages(imageHash, handle);
 
-    // Debug: Log first product's handle and SKU availability
-    if (i === 0) {
-      Logger.log(`🔍 First product handle: "${handle}"`);
-      Logger.log(`🔍 Handle without suffix for SKU lookup: "${handleWithoutSuffix}"`);
-      Logger.log(`🔍 SKUs available for this handle: ${skuMap[handleWithoutSuffix] ? skuMap[handleWithoutSuffix].length : 0}`);
+    // Debug: Log handle and SKU availability for all products
+    const skuCount = skuMap[handleWithoutSuffix] ? skuMap[handleWithoutSuffix].length : 0;
+    if (skuCount > 0) {
+      Logger.log(`✅ Product ${i+1}: "${handleWithoutSuffix}" - ${skuCount} SKUs found`);
+    } else {
+      Logger.log(`❌ Product ${i+1}: "${handleWithoutSuffix}" - NO SKUs found`);
     }
 
     fillProductData(outputData[baseRow], row, handle);
