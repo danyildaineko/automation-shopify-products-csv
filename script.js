@@ -484,8 +484,16 @@ function copyBriefs(suite) {
   sourceData.forEach((row, i) => {
     const baseRow = i * suite.sectionSize;
     const handle = generateHandle(row[0], row[3], suite.handleSuffix);
+    const handleWithoutSuffix = generateHandle(row[0], row[3], ''); // For SKU lookup
     const productImages = getProductImages(imageHash, handle);
-    
+
+    // Debug: Log first product's handle and SKU availability
+    if (i === 0) {
+      Logger.log(`🔍 First product handle: "${handle}"`);
+      Logger.log(`🔍 Handle without suffix for SKU lookup: "${handleWithoutSuffix}"`);
+      Logger.log(`🔍 SKUs available for this handle: ${skuMap[handleWithoutSuffix] ? skuMap[handleWithoutSuffix].length : 0}`);
+    }
+
     fillProductData(outputData[baseRow], row, handle);
     
     const isDouble = row[4].toString().toLowerCase().includes('double');
@@ -522,9 +530,9 @@ function copyBriefs(suite) {
       
       fillVariantData(outputData[currentRow], isFirst, isLast, sizeData);
 
-      // SKU mapping by handle and variant index
-      if (skuMap[handle] && skuMap[handle][j]) {
-        outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[handle][j];
+      // SKU mapping by handle (without suffix) and variant index
+      if (skuMap[handleWithoutSuffix] && skuMap[handleWithoutSuffix][j]) {
+        outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[handleWithoutSuffix][j];
       }
 
       // Variant images mapping
