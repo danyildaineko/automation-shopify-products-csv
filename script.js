@@ -95,22 +95,27 @@ const SHOPIFY_HEADERS = [
 // ============================================
 function readSuites() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Suites');
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
-  
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
+
   return data
     .filter(row => row[1] === true)
-    .map(row => ({
-      id: row[0],
-      name: row[2],
-      destSheet: row[3],
-      sourceFileId: row[4],
-      sourceSheet: row[5],
-      startRow: row[6],
-      endRow: row[7],
-      handleSuffix: row[8],
-      sectionSize: row[9],
-      skuSheet: row[10] || null
-    }));
+    .map(row => {
+      // Debug: log what's in column K
+      Logger.log(`🔍 Suite "${row[2]}" - Column K (row[10]): "${row[10]}" (type: ${typeof row[10]}, length: ${row[10]?.length})`);
+
+      return {
+        id: row[0],
+        name: row[2],
+        destSheet: row[3],
+        sourceFileId: row[4],
+        sourceSheet: row[5],
+        startRow: row[6],
+        endRow: row[7],
+        handleSuffix: row[8],
+        sectionSize: row[9],
+        skuSheet: row[10] || null
+      };
+    });
 }
 
 function runSuite() {
@@ -178,47 +183,71 @@ function readSizesFromSource(suite) {
 // ============================================
 function readSKUsFromSource(suite) {
   Logger.log(`📦 SKU sheet config: "${suite.skuSheet}"`);
-  
+
   if (!suite.skuSheet) {
     Logger.log('📦 No SKU sheet configured - skipping');
     return {};
   }
-  
+
   try {
-    const sourceSS = SpreadsheetApp.openById(suite.sourceFileId);
-    const skuSheet = sourceSS.getSheetByName(suite.skuSheet);
-    
+    // Read from active spreadsheet (same file), not source file
+    const activeSS = SpreadsheetApp.getActiveSpreadsheet();
+    const skuSheet = activeSS.getSheetByName(suite.skuSheet);
+
     if (!skuSheet) {
       Logger.log(`⚠️ SKU sheet "${suite.skuSheet}" not found`);
       return {};
     }
-    
+
     const lastRow = skuSheet.getLastRow();
     Logger.log(`📦 SKU sheet has ${lastRow} rows`);
-    
+
     if (lastRow < 2) return {};
-    
+
+    // Read columns A (handle) and R (SKU)
     const data = skuSheet.getRange(2, 1, lastRow - 1, 18).getValues();
-    
+
     const skuMap = {};
-    let mapped = 0;
-    
+    const handleCounts = {};
+    let totalMapped = 0;
+
     data.forEach(row => {
-      const size = row[9];  // Column J
-      const sku = row[17];  // Column R
-      
-      if (size && sku) {
-        skuMap[size.toString().trim()] = sku.toString().trim();
-        mapped++;
-        if (mapped <= 3) {
-          Logger.log(`  Sample: ${size} -> ${sku}`);
+      const handle = row[0];  // Column A
+      const sku = row[17];    // Column R
+
+      if (handle && sku) {
+        let cleanHandle = handle.toString().trim();
+        const cleanSku = sku.toString().trim();
+
+        // Remove common suffixes (-exterior, -test, -ext, etc.) to match base handles
+        cleanHandle = cleanHandle.replace(/-(exterior|test|ext|int|interior)$/i, '');
+
+        // Initialize array for new handle
+        if (!skuMap[cleanHandle]) {
+          skuMap[cleanHandle] = [];
+          handleCounts[cleanHandle] = 0;
+        }
+
+        // Only keep first suite.sectionSize SKUs per handle (memory optimization)
+        if (handleCounts[cleanHandle] < suite.sectionSize) {
+          skuMap[cleanHandle].push(cleanSku);
+          handleCounts[cleanHandle]++;
+          totalMapped++;
         }
       }
     });
-    
-    Logger.log(`📦 Loaded ${Object.keys(skuMap).length} SKU mappings from "${suite.skuSheet}"`);
+
+    const handleCount = Object.keys(skuMap).length;
+    Logger.log(`📦 Loaded ${totalMapped} SKUs for ${handleCount} handles from "${suite.skuSheet}"`);
+
+    // Show sample
+    if (handleCount > 0) {
+      const sampleHandle = Object.keys(skuMap)[0];
+      Logger.log(`  Sample: ${sampleHandle} -> [${skuMap[sampleHandle].slice(0, 3).join(', ')}...]`);
+    }
+
     return skuMap;
-    
+
   } catch (e) {
     Logger.log(`⚠️ Error reading SKUs: ${e.message}`);
     return {};
@@ -458,8 +487,17 @@ function copyBriefs(suite) {
   sourceData.forEach((row, i) => {
     const baseRow = i * suite.sectionSize;
     const handle = generateHandle(row[0], row[3], suite.handleSuffix);
+    const handleWithoutSuffix = generateHandle(row[0], row[3], ''); // For SKU lookup
     const productImages = getProductImages(imageHash, handle);
-    
+
+    // Debug: Log handle and SKU availability for all products
+    const skuCount = skuMap[handleWithoutSuffix] ? skuMap[handleWithoutSuffix].length : 0;
+    if (skuCount > 0) {
+      Logger.log(`✅ Product ${i+1}: "${handleWithoutSuffix}" - ${skuCount} SKUs found`);
+    } else {
+      Logger.log(`❌ Product ${i+1}: "${handleWithoutSuffix}" - NO SKUs found`);
+    }
+
     fillProductData(outputData[baseRow], row, handle);
     
     const isDouble = row[4].toString().toLowerCase().includes('double');
@@ -495,10 +533,10 @@ function copyBriefs(suite) {
       }
       
       fillVariantData(outputData[currentRow], isFirst, isLast, sizeData);
-      
-      // SKU mapping
-      if (sizeData?.size && skuMap[sizeData.size]) {
-        outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[sizeData.size];
+
+      // SKU mapping by handle (without suffix) and variant index
+      if (skuMap[handleWithoutSuffix] && skuMap[handleWithoutSuffix][j]) {
+        outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[handleWithoutSuffix][j];
       }
 
       // Variant images mapping
