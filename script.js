@@ -376,16 +376,34 @@ function generateHandle(title, collection, suffix) {
 // Wrapping description from brief in tag <p>
 function wrapDescription(text) {
   if (!text) return '';
-  
+
   const str = text.toString().trim();
-  
+
   // Check if already has <p> tag
   if (str.includes('<p>') || str.includes('<p ')) {
     return str;
   }
-  
+
   // Wrap in <p> tags
   return `<p>${str}</p>`;
+}
+
+// Extract Number of Lites from title
+// Equivalent to Excel formula: =IFERROR(LEFT(B2, SEARCH("Lite", B2) + 3), "")
+function extractNumberOfLites(title) {
+  if (!title || typeof title !== 'string') {
+    return '';
+  }
+
+  const liteIndex = title.indexOf('Lite');
+  if (liteIndex === -1) {
+    return '';
+  }
+
+  // Excel SEARCH returns 1-indexed position, +3 extends past start of "Lite"
+  // In JS (0-indexed): substring(0, liteIndex + 4) captures text up to "Lite" + first 3 chars
+  // This captures patterns like "3 Lite", "Full Lite", etc.
+  return title.substring(0, liteIndex + 4);
 }
 
 // ============================================
@@ -400,6 +418,7 @@ function fillProductData(outputRow, sourceRow, handle) {
   outputRow[COLUMNS.COLLECTION - 1] = sourceRow[3];
   outputRow[COLUMNS.DOOR_TYPE - 1] = sourceRow[4];
   outputRow[COLUMNS.DOOR_STYLE - 1] = sourceRow[5];
+  outputRow[COLUMNS.NUMBER_OF_LITES - 1] = extractNumberOfLites(sourceRow[0]);
   outputRow[COLUMNS.COLOR - 1] = CONFIG.METAFIELDS.COLOR;
   outputRow[COLUMNS.DOOR_MATERIAL - 1] = CONFIG.METAFIELDS.MATERIAL;
   outputRow[COLUMNS.VENDOR - 1] = CONFIG.STATIC_VALUES.VENDOR;
