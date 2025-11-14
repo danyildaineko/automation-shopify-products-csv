@@ -48,7 +48,12 @@ const CONFIG = {
       DOUBLE: ['48"W x 80"H Doors', '56"W x 80"H Doors', '60"W x 80"H Doors', '64"W x 80"H Doors', '60"W x 96"H Doors', '64"W x 96"H Doors', '68"W x 96"H Doors', '72"W x 80"H Doors', '72"W x 96"H Doors', '76"W x 96"H Doors', '80"W x 96"H Doors', '84"W x 96"H Doors']
     }
   },
-  
+
+  SHOW_VARIANT_SIZES: {
+    SINGLE: ['32"W x 81"H', '32"W x 84"H', '32"W x 96"H', '36"W x 80"H', '36"W x 81"H', '36"W x 84"H', '36"W x 96"H', '42"W x 102"H'],
+    DOUBLE: ['60"W x 96"H', '61"W x 81"H', '61"W x 96"H', '64"W x 80"H', '64"W x 96"H', '72"W x 80"H', '72"W x 84"H', '72"W x 96"H']
+  },
+
   PRICE_MARKUP: 1.20, // +20% for compare price
   WEIGHT_GRAMS_TO_LBS: 453.592
 };
@@ -90,9 +95,10 @@ const COLUMNS = {
   DOOR_SUITABLE_LOCATION: 54,        
   DOOR_SURFACE_FINISH: 55,           
   STYLE: 56,                      
-  VARIANT_IMAGE: 61,                
-  VARIANT_WEIGHT_UNIT: 62,           
-  STATUS: 65   
+  VARIANT_IMAGE: 61,
+  VARIANT_WEIGHT_UNIT: 62,
+  SHOW_VARIANT: 65,
+  STATUS: 66   
 };
 
 const SHOPIFY_HEADERS = [
@@ -115,7 +121,8 @@ const SHOPIFY_HEADERS = [
   "Related products (product.metafields.shopify--discovery--product_recommendation.related_products)",
   "Related products settings (product.metafields.shopify--discovery--product_recommendation.related_products_display)",
   "Search product boosts (product.metafields.shopify--discovery--product_search_boost.queries)",
-  "Variant Image", "Variant Weight Unit", "Variant Tax Code", "Cost per item", "Status"
+  "Variant Image", "Variant Weight Unit", "Variant Tax Code", "Cost per item",
+  "Show Variant (variant.metafields.custom.show_variant)", "Status"
 ];
 
 function runSuite() {
@@ -500,6 +507,35 @@ function wrapDescription(text) {
   return `<p>${str}</p>`;
 }
 
+// Check if size should show variant
+function shouldShowVariant(sizeString) {
+  if (!sizeString || typeof sizeString !== 'string') {
+    return false;
+  }
+
+  // Normalize size string to extract just the dimensions
+  const normalized = sizeString.toString().trim();
+
+  // Extract just the size part (e.g., "32"W x 81"H" from "32"W x 81"H Door")
+  const sizeMatch = normalized.match(/(\d+"W\s*x\s*\d+"H)/i);
+  if (!sizeMatch) {
+    return false;
+  }
+
+  const size = sizeMatch[1].replace(/\s+/g, ' '); // Normalize spaces
+
+  // Check in both SINGLE and DOUBLE lists
+  const allSizes = [
+    ...CONFIG.SHOW_VARIANT_SIZES.SINGLE,
+    ...CONFIG.SHOW_VARIANT_SIZES.DOUBLE
+  ];
+
+  return allSizes.some(validSize => {
+    const normalizedValidSize = validSize.replace(/\s+/g, ' ');
+    return size.toLowerCase() === normalizedValidSize.toLowerCase();
+  });
+}
+
 // Extract Number of Lites from title
 // Equivalent to Excel formula: =IFERROR(LEFT(B2, SEARCH("Lite", B2) + 3), "")
 function extractNumberOfLites(title) {
@@ -588,11 +624,13 @@ function fillVariantData(outputRow, isFirst, isLast, sizeData) {
   } else {
     outputRow[COLUMNS.VARIANT_INVENTORY_QTY - 1] = CONFIG.VARIANT_DEFAULTS.INVENTORY_VARIANT;
   }
-  
+
   if (isFirst && sizeData?.isCustomSize) {
     outputRow[COLUMNS.OPTION1_VALUE - 1] = CONFIG.STATIC_VALUES.CUSTOM_SIZE_LABEL;
     if (sizeData.price) outputRow[COLUMNS.VARIANT_PRICE - 1] = sizeData.price;
     if (sizeData.weight) outputRow[COLUMNS.VARIANT_GRAMS - 1] = Math.round(sizeData.weight * CONFIG.WEIGHT_GRAMS_TO_LBS);
+    // Don't set show_variant for base line (Custom Size)
+    outputRow[COLUMNS.SHOW_VARIANT - 1] = '';
   } else {
     if (sizeData?.size) outputRow[COLUMNS.OPTION1_VALUE - 1] = sizeData.size;
     if (sizeData?.price) {
@@ -600,6 +638,11 @@ function fillVariantData(outputRow, isFirst, isLast, sizeData) {
       outputRow[COLUMNS.VARIANT_COMPARE_PRICE - 1] = Math.round(sizeData.price * CONFIG.PRICE_MARKUP * 100) / 100;
     }
     if (sizeData?.weight) outputRow[COLUMNS.VARIANT_GRAMS - 1] = Math.round(sizeData.weight * CONFIG.WEIGHT_GRAMS_TO_LBS);
+
+    // Set show_variant based on size
+    if (sizeData?.size) {
+      outputRow[COLUMNS.SHOW_VARIANT - 1] = shouldShowVariant(sizeData.size) ? 'TRUE' : 'FALSE';
+    }
   }
 }
 
@@ -713,34 +756,40 @@ function fillSuite4ProductData(outputRow, sourceRow, handle, isFirst) {
   }
 }
 
-function fillSuite4VariantData(outputRow, absoluteIdx, relativeIdx, skuMap, handleWithoutSuffix, fixedPriceSkuMap, suite4Variants) {
+function fillSuite4VariantData(outputRow, absoluteIdx, relativeIdx, skuMap, handleWithoutSuffix, suite4Variants) {
   if (!suite4Variants || absoluteIdx >= suite4Variants.length) {
     Logger.log(`⚠️ Variant ${absoluteIdx} out of range (${suite4Variants?.length || 0} variants)`);
     return;
   }
-  
+
   const variant = suite4Variants[absoluteIdx];
-  
+  const isFirst = relativeIdx === 0;
+
   // Variant SKU
   let variantSku = '';
   if (skuMap[handleWithoutSuffix]?.[relativeIdx]) {
     variantSku = skuMap[handleWithoutSuffix][relativeIdx];
     outputRow[2] = variantSku;
   }
-  
+
   // Variant Price
   outputRow[3] = variant.price;
-  
+
   // Option1 Value (Size)
   outputRow[4] = variant.size;
-  
-  // metafield.custom.show_variant - check if SKU exists in fixedPriceSkuMap
-  const showVariant = fixedPriceSkuMap.has(variantSku);
-  outputRow[5] = showVariant ? 'true' : 'false';
-  
+
+  // metafield.custom.show_variant - check if size is in the show variant list
+  // Don't set for base line (first variant)
+  if (isFirst) {
+    outputRow[5] = '';
+  } else {
+    const showVariant = shouldShowVariant(variant.size);
+    outputRow[5] = showVariant ? 'TRUE' : 'FALSE';
+  }
+
   // Debug logging for first few variants
   if (absoluteIdx < 3) {
-    Logger.log(`🔍 Variant ${absoluteIdx}: SKU="${variantSku}", Size="${variant.size}", Show="${showVariant}", InMap=${fixedPriceSkuMap.has(variantSku)}`);
+    Logger.log(`🔍 Variant ${absoluteIdx}: SKU="${variantSku}", Size="${variant.size}", isFirst="${isFirst}", Show="${outputRow[5]}"`);
   }
 }
 
@@ -750,7 +799,7 @@ function copyBriefs(suite) {
   
   if (!dest) dest = destSS.insertSheet(suite.destSheet);
   
-  dest.getRange(1, 1, dest.getMaxRows(), 65).clearContent();
+  dest.getRange(1, 1, dest.getMaxRows(), 66).clearContent();
   
   // Headers
   const headers = suite.id === 4 ? CONFIG.SUITE_4_HEADERS : SHOPIFY_HEADERS;
@@ -761,13 +810,12 @@ function copyBriefs(suite) {
   const sizesConfig = suite.id === 4 ? null : readSizesFromSource(suite);
   const imageLinks = suite.id === 4 ? [] : readImageLinks(suite.sourceFileId, suite);
   const skuMap = readSKUsFromSource(suite);
-  const fixedPriceSkuMap = suite.id === 4 ? readPriceFixedNewSizes(suite.sourceFileId) : new Map();
   const suite4Variants = suite.id === 4 ? readSuite4Variants(suite.sourceFileId) : null;
   
   const numProducts = suite.endRow - suite.startRow + 1;
   const sourceData = source.getRange(suite.startRow, 2, numProducts, 46).getValues();
   const totalRows = numProducts * suite.sectionSize;
-  const numCols = suite.id === 4 ? 6 : 65;
+  const numCols = suite.id === 4 ? 6 : 66;
   const outputData = Array(totalRows).fill(null).map(() => Array(numCols).fill(''));
   
   Logger.log(`📷 Parsed ${imageLinks.length} image URLs`);
@@ -811,7 +859,7 @@ function copyBriefs(suite) {
       
       if (suite.id === 4) {
         const absoluteVariantIdx = i * suite.sectionSize + j;
-        fillSuite4VariantData(outputData[currentRow], absoluteVariantIdx, j, skuMap, handleWithoutSuffix, fixedPriceSkuMap, suite4Variants);
+        fillSuite4VariantData(outputData[currentRow], absoluteVariantIdx, j, skuMap, handleWithoutSuffix, suite4Variants);
       } else {
         let sizeData = null;
         if (sizesConfig) {
