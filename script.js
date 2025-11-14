@@ -2,11 +2,6 @@
 // CONFIGURATION
 // ============================================
 const CONFIG = {
-  SUITE_4_HEADERS: [
-  'Handle', 'Title', 'Variant SKU', 'Variant Price', 
-  'Option1 Value', 'metafield.custom.show_variant'
-],
-
   STATIC_VALUES: {
     VENDOR: "AlpadaDoors",
     PRODUCT_CATEGORY: "Hardware > Building Materials > Doors > Home Doors",
@@ -26,13 +21,10 @@ const CONFIG = {
 
   METAFIELDS: {
     COLOR: "matte-black-ral-7021; grey-blue-ral-5008; sepia-brown-ral-8014; olive-gray-ral-7002; pebble-gray-ral-7032; window-gray-ral-7040; pure-white-ral-9010",
-    DOOR_GLASS_FINISH: "ribbed-veritcal; ribbed-horizontal; grey-glass; clear; frost; opaque",             
-    DOOR_MATERIAL: "steel; glass",         
-    DOOR_SUITABLE_LOCATION: "front",        
-    DOOR_SURFACE_FINISH: "",
-    GLAZING_TYPE: "",
-    MATERIAL: "",
-    STYLE: ""
+    DOOR_GLASS_FINISH: "ribbed-veritcal; ribbed-horizontal; grey-glass; clear; frost; opaque",
+    DOOR_MATERIAL: "steel; glass",
+    DOOR_SUITABLE_LOCATION: "front",
+    DOOR_SURFACE_FINISH: ""
   },
 
   REPEATABLE_IMAGES: {
@@ -48,8 +40,13 @@ const CONFIG = {
       DOUBLE: ['48"W x 80"H Doors', '56"W x 80"H Doors', '60"W x 80"H Doors', '64"W x 80"H Doors', '60"W x 96"H Doors', '64"W x 96"H Doors', '68"W x 96"H Doors', '72"W x 80"H Doors', '72"W x 96"H Doors', '76"W x 96"H Doors', '80"W x 96"H Doors', '84"W x 96"H Doors']
     }
   },
-  
-  PRICE_MARKUP: 1.20, // +20% for compare price
+
+  APPROVED_SIZES: {
+    SINGLE: ['Custom Size', '32"W x 81"H', '32"W x 84"H', '32"W x 96"H', '36"W x 80"H', '36"W x 81"H', '36"W x 84"H', '36"W x 96"H', '42"W x 102"H'],
+    DOUBLE: ['Custom Size', '60"W x 96"H', '61"W x 81"H', '61"W x 96"H', '64"W x 80"H', '64"W x 96"H', '72"W x 80"H', '72"W x 84"H', '72"W x 96"H']
+  },
+
+  PRICE_MARKUP: 1.20, // +20% for markup price
   WEIGHT_GRAMS_TO_LBS: 453.592
 };
 
@@ -84,15 +81,16 @@ const COLUMNS = {
   DOOR_TYPE: 48,
   NUMBER_OF_LITES: 49,
   COLOR: 50,
-  DOOR_APPLICATION: 51,            
-  DOOR_GLASS_FINISH: 52,             
-  DOOR_MATERIAL: 53,                 
-  DOOR_SUITABLE_LOCATION: 54,        
-  DOOR_SURFACE_FINISH: 55,           
-  STYLE: 56,                      
-  VARIANT_IMAGE: 61,                
-  VARIANT_WEIGHT_UNIT: 62,           
-  STATUS: 65   
+  DOOR_APPLICATION: 51,
+  DOOR_GLASS_FINISH: 52,
+  DOOR_MATERIAL: 53,
+  DOOR_SUITABLE_LOCATION: 54,
+  DOOR_SURFACE_FINISH: 55,
+  STYLE: 56,
+  SHOW_VARIANT: 57,
+  VARIANT_IMAGE: 62,
+  VARIANT_WEIGHT_UNIT: 63,
+  STATUS: 66
 };
 
 const SHOPIFY_HEADERS = [
@@ -108,10 +106,11 @@ const SHOPIFY_HEADERS = [
   "Google Shopping / Custom Label 2", "Google Shopping / Custom Label 3", "Google Shopping / Custom Label 4",
   "Collection (product.metafields.custom.collection)", "Door Style (product.metafields.custom.door_style)",
   "Door Type (product.metafields.custom.door_type)", "Number of Lites (product.metafields.custom.number_of_lite)",
-  "Color (product.metafields.shopify.color-pattern)", "Door application (product.metafields.shopify.door-application)", 
+  "Color (product.metafields.shopify.color-pattern)", "Door application (product.metafields.shopify.door-application)",
   "Door glass finish (product.metafields.shopify.door-glass-finish)", "Door material (product.metafields.shopify.door-material)",
   "Door suitable location (product.metafields.shopify.door-suitable-location)", "Door surface finish (product.metafields.shopify.door-surface-finish)",
-  "Style (product.metafields.shopify.style)", "Complementary products (product.metafields.shopify--discovery--product_recommendation.complementary_products)",
+  "Style (product.metafields.shopify.style)", "Show Variant (variant.metafields.custom.show_variant)",
+  "Complementary products (product.metafields.shopify--discovery--product_recommendation.complementary_products)",
   "Related products (product.metafields.shopify--discovery--product_recommendation.related_products)",
   "Related products settings (product.metafields.shopify--discovery--product_recommendation.related_products_display)",
   "Search product boosts (product.metafields.shopify--discovery--product_search_boost.queries)",
@@ -604,293 +603,131 @@ function fillVariantData(outputRow, isFirst, isLast, sizeData) {
 }
 
 
-function readSuite4Variants(sourceFileId) {
-  try {
-    const sourceSS = SpreadsheetApp.openById(sourceFileId);
-    const thisSheet = sourceSS.getSheetByName('THIS 1.0');
-    
-    if (!thisSheet) {
-      Logger.log('⚠️ THIS 1.0 sheet not found');
-      return [];
-    }
-    
-    const lastRow = thisSheet.getLastRow();
-    const lastCol = thisSheet.getLastColumn();
-    
-    // Read ALL headers
-    const headers = thisSheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    Logger.log(`📋 ALL HEADERS (${headers.length} columns):`);
-    headers.forEach((h, i) => Logger.log(`  Col ${i+1}: "${h}"`));
-    
-    // Find columns
-    let skuCol = -1, priceCol = -1, sizeCol = -1;
-    headers.forEach((h, i) => {
-      const hLower = h.toString().toLowerCase();
-      if (hLower.includes('sku')) skuCol = i + 1;
-      if (hLower.includes('price') && !hLower.includes('compare')) priceCol = i + 1;
-      if (hLower.includes('option1') || (hLower.includes('size') && !hLower.includes('custom'))) sizeCol = i + 1;
-    });
-    
-    Logger.log(`✅ Found: SKU=col${skuCol}, Price=col${priceCol}, Size=col${sizeCol}`);
-    
-    if (priceCol === -1 || sizeCol === -1) {
-      Logger.log('❌ Cannot find required columns');
-      return [];
-    }
-    
-    // Read sample data
-    const sampleData = thisSheet.getRange(2, 1, Math.min(5, lastRow - 1), lastCol).getValues();
-    Logger.log(`📋 First 3 data rows:`);
-    sampleData.slice(0, 3).forEach((row, i) => {
-      Logger.log(`  Row ${i+2}: Price="${row[priceCol-1]}", Size="${row[sizeCol-1]}"`);
-    });
-    
-    // Read all variants
-    const maxCol = Math.max(priceCol, sizeCol);
-    const data = thisSheet.getRange(2, 1, lastRow - 1, maxCol).getValues();
-    
-    const variants = data.map(row => ({
-      price: row[priceCol - 1] || '',
-      size: row[sizeCol - 1] || ''
-    }));
-    
-    Logger.log(`✅ Read ${variants.length} variants`);
-    
-    return variants;
-    
-  } catch (e) {
-    Logger.log(`❌ Error: ${e.message}`);
-    return [];
-  }
-}
-
-function readPriceFixedNewSizes(sourceFileId) {
-  try {
-    Logger.log(`🔍 Reading price_fixed_new from file: ${sourceFileId}`);
-    const sourceSS = SpreadsheetApp.openById(sourceFileId);
-    const priceFixedSheet = sourceSS.getSheetByName('price_fixed_new');
-    
-    if (!priceFixedSheet) {
-      Logger.log('⚠️ price_fixed_new sheet not found');
-      return new Map();
-    }
-    
-    const lastRow = priceFixedSheet.getLastRow();
-    Logger.log(`📊 price_fixed_new has ${lastRow} rows`);
-    
-    if (lastRow < 2) {
-      Logger.log('⚠️ price_fixed_new has no data rows');
-      return new Map();
-    }
-    
-    // Read columns: 3=SKU, 5=Size
-    const data = priceFixedSheet.getRange(2, 3, lastRow - 1, 3).getValues();
-    
-    const skuToSizeMap = new Map();
-    data.forEach((row, idx) => {
-      const sku = row[0] ? row[0].toString().trim() : '';
-      const size = row[2] ? row[2].toString().trim().toLowerCase() : '';
-      if (sku && size) {
-        skuToSizeMap.set(sku, size);
-      }
-    });
-    
-    Logger.log(`✅ Read ${skuToSizeMap.size} SKU-to-size mappings`);
-    const first5 = Array.from(skuToSizeMap.entries()).slice(0, 5);
-    Logger.log(`📋 First 5 SKU mappings: ${JSON.stringify(first5)}`);
-    
-    return skuToSizeMap;
-  } catch (e) {
-    Logger.log(`❌ Error reading price_fixed_new: ${e.message}`);
-    return new Map();
-  }
-}
-
-function fillSuite4ProductData(outputRow, sourceRow, handle, isFirst) {
-  outputRow[0] = handle;
-  if (isFirst) {
-    outputRow[1] = sourceRow[0]; // Title only on first variant
-  }
-}
-
-function fillSuite4VariantData(outputRow, absoluteIdx, relativeIdx, skuMap, handleWithoutSuffix, fixedPriceSkuMap, suite4Variants) {
-  if (!suite4Variants || absoluteIdx >= suite4Variants.length) {
-    Logger.log(`⚠️ Variant ${absoluteIdx} out of range (${suite4Variants?.length || 0} variants)`);
-    return;
-  }
-  
-  const variant = suite4Variants[absoluteIdx];
-  
-  // Variant SKU
-  let variantSku = '';
-  if (skuMap[handleWithoutSuffix]?.[relativeIdx]) {
-    variantSku = skuMap[handleWithoutSuffix][relativeIdx];
-    outputRow[2] = variantSku;
-  }
-  
-  // Variant Price
-  outputRow[3] = variant.price;
-  
-  // Option1 Value (Size)
-  outputRow[4] = variant.size;
-  
-  // metafield.custom.show_variant - check if SKU exists in fixedPriceSkuMap
-  const showVariant = fixedPriceSkuMap.has(variantSku);
-  outputRow[5] = showVariant ? 'true' : 'false';
-  
-  // Debug logging for first few variants
-  if (absoluteIdx < 3) {
-    Logger.log(`🔍 Variant ${absoluteIdx}: SKU="${variantSku}", Size="${variant.size}", Show="${showVariant}", InMap=${fixedPriceSkuMap.has(variantSku)}`);
-  }
-}
-
 function copyBriefs(suite) {
   const destSS = SpreadsheetApp.getActiveSpreadsheet();
   let dest = destSS.getSheetByName(suite.destSheet);
-  
+
   if (!dest) dest = destSS.insertSheet(suite.destSheet);
-  
-  dest.getRange(1, 1, dest.getMaxRows(), 65).clearContent();
-  
-  // Headers
-  const headers = suite.id === 4 ? CONFIG.SUITE_4_HEADERS : SHOPIFY_HEADERS;
-  dest.getRange(1, 1, 1, headers.length).setValues([headers]);
-  
+
+  dest.getRange(1, 1, dest.getMaxRows(), 66).clearContent();
+
+  // Headers - now all suites use standard headers
+  dest.getRange(1, 1, 1, SHOPIFY_HEADERS.length).setValues([SHOPIFY_HEADERS]);
+
   const sourceSS = SpreadsheetApp.openById(suite.sourceFileId);
   const source = sourceSS.getSheetByName(suite.sourceSheet);
-  const sizesConfig = suite.id === 4 ? null : readSizesFromSource(suite);
-  const imageLinks = suite.id === 4 ? [] : readImageLinks(suite.sourceFileId, suite);
+  const sizesConfig = readSizesFromSource(suite);
+  const imageLinks = readImageLinks(suite.sourceFileId, suite);
   const skuMap = readSKUsFromSource(suite);
-  const fixedPriceSkuMap = suite.id === 4 ? readPriceFixedNewSizes(suite.sourceFileId) : new Map();
-  const suite4Variants = suite.id === 4 ? readSuite4Variants(suite.sourceFileId) : null;
-  
+
   const numProducts = suite.endRow - suite.startRow + 1;
   const sourceData = source.getRange(suite.startRow, 2, numProducts, 46).getValues();
   const totalRows = numProducts * suite.sectionSize;
-  const numCols = suite.id === 4 ? 6 : 65;
+  const numCols = 66;
   const outputData = Array(totalRows).fill(null).map(() => Array(numCols).fill(''));
-  
+
   Logger.log(`📷 Parsed ${imageLinks.length} image URLs`);
-  
+
   const imageHash = suite.id === 2 ? null : buildImageHash(imageLinks);
-  
+
   sourceData.forEach((row, i) => {
     const baseRow = i * suite.sectionSize;
     const handle = generateHandle(row[0], row[3], suite.handleSuffix);
     const handleWithoutSuffix = generateHandle(row[0], row[3], '');
-    
-    // Image logic (skip for suite 4)
+
+    // Image logic
     let productImages = [];
     if (suite.id === 2) {
       if (i < imageLinks.length && imageLinks[i]?.url) {
         productImages = [imageLinks[i].url];
       }
-    } else if (suite.id !== 4) {
+    } else {
       productImages = getProductImages(imageHash, handle);
-      if (suite.id !== 1 && (row[2].toString().toLowerCase().includes('exterior') || 
+      if (suite.id !== 1 && (row[2].toString().toLowerCase().includes('exterior') ||
           row[5].toString().toLowerCase().includes('arched'))) {
         productImages.push(...CONFIG.REPEATABLE_IMAGES.EXTERIOR_ARCHED);
       }
     }
 
-    // Fill product row
-    if (suite.id === 4) {
-      fillSuite4ProductData(outputData[baseRow], row, handle, true);
-    } else {
-      // ✅ Add this to fill product data for suite 1, 2, 3, 5, etc.
-      fillProductData(outputData[baseRow], row, handle, suite.published);
-    }
-    
+    // Fill product data for all suites
+    fillProductData(outputData[baseRow], row, handle, suite.published);
+
     // Fill variants
     for (let j = 0; j < suite.sectionSize; j++) {
       const currentRow = baseRow + j;
       const isLast = (j === suite.sectionSize - 1);
       const isFirst = (j === 0);
-      
+
       outputData[currentRow][0] = handle;
-      
-      if (suite.id === 4) {
-        const absoluteVariantIdx = i * suite.sectionSize + j;
-        fillSuite4VariantData(outputData[currentRow], absoluteVariantIdx, j, skuMap, handleWithoutSuffix, fixedPriceSkuMap, suite4Variants);
-      } else {
-        let sizeData = null;
-        if (sizesConfig) {
-          if (sizesConfig.isConstant) {
-            const isDouble = row[0].toString().toLowerCase().includes('double');
-            const sizeList = isDouble ? sizesConfig.constantSizes.DOUBLE : sizesConfig.constantSizes.SINGLE;
-            if (j < sizeList.length) {
-              sizeData = { size: sizeList[j], price: calculateSuite2Price(sizeList[j]) };
-            }
-          } else {
-            const isDouble = row[4].toString().toLowerCase().includes('double');
-            const colPrefix = isDouble ? '_double' : '';
-            if (isFirst) {
-              const lastIdx = sizesConfig.data.length - 1;
-              if (lastIdx >= 0) {
-                sizeData = { 
-                  isCustomSize: true,
-                  price: sizesConfig.data[lastIdx][sizesConfig.columns[`price_exterior${colPrefix}`]],
-                  weight: sizesConfig.data[lastIdx][sizesConfig.columns[`weights_exterior${colPrefix}`]]
-                };
-              }
-            } else if (j - 1 < sizesConfig.data.length) {
-              // normal size (offset by 1 since custom is first)
-              const dataRow = sizesConfig.data[j - 1];
+
+      let sizeData = null;
+      if (sizesConfig) {
+        if (sizesConfig.isConstant) {
+          const isDouble = row[0].toString().toLowerCase().includes('double');
+          const sizeList = isDouble ? sizesConfig.constantSizes.DOUBLE : sizesConfig.constantSizes.SINGLE;
+          if (j < sizeList.length) {
+            sizeData = { size: sizeList[j], price: calculateSuite2Price(sizeList[j]) };
+          }
+        } else {
+          const isDouble = row[4].toString().toLowerCase().includes('double');
+          const colPrefix = isDouble ? '_double' : '';
+          if (isFirst) {
+            const lastIdx = sizesConfig.data.length - 1;
+            if (lastIdx >= 0) {
               sizeData = {
-                size: dataRow[sizesConfig.columns[`size_exterior${colPrefix}`]],
-                price: dataRow[sizesConfig.columns[`price_exterior${colPrefix}`]],
-                weight: dataRow[sizesConfig.columns[`weights_exterior${colPrefix}`]]
+                isCustomSize: true,
+                price: sizesConfig.data[lastIdx][sizesConfig.columns[`price_exterior${colPrefix}`]],
+                weight: sizesConfig.data[lastIdx][sizesConfig.columns[`weights_exterior${colPrefix}`]]
               };
             }
+          } else if (j - 1 < sizesConfig.data.length) {
+            // normal size (offset by 1 since custom is first)
+            const dataRow = sizesConfig.data[j - 1];
+            sizeData = {
+              size: dataRow[sizesConfig.columns[`size_exterior${colPrefix}`]],
+              price: dataRow[sizesConfig.columns[`price_exterior${colPrefix}`]],
+              weight: dataRow[sizesConfig.columns[`weights_exterior${colPrefix}`]]
+            };
           }
         }
-        fillVariantData(outputData[currentRow], isFirst, isLast, sizeData);
+      }
+      fillVariantData(outputData[currentRow], isFirst, isLast, sizeData);
 
-        // SKU mapping
-        if (suite.id === 2 && Array.isArray(skuMap)) {
-          if (skuMap[i]?.[j]) outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[i][j];
-        } else if (skuMap[handleWithoutSuffix]?.[j]) {
-          outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[handleWithoutSuffix][j];
-        }
+      // SKU mapping
+      if (suite.id === 2 && Array.isArray(skuMap)) {
+        if (skuMap[i]?.[j]) outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[i][j];
+      } else if (skuMap[handleWithoutSuffix]?.[j]) {
+        outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[handleWithoutSuffix][j];
+      }
 
-        if (productImages.length > 0) {
-          outputData[currentRow][COLUMNS.VARIANT_IMAGE - 1] = productImages[0];
+      if (productImages.length > 0) {
+        outputData[currentRow][COLUMNS.VARIANT_IMAGE - 1] = productImages[0];
+      }
+
+      // Show variant metafield logic - skip first variant (baseline)
+      if (!isFirst) {
+        const size = outputData[currentRow][COLUMNS.OPTION1_VALUE - 1];
+        if (size) {
+          const isDouble = row[0].toString().toLowerCase().includes('double') ||
+                          row[4].toString().toLowerCase().includes('double');
+          const approvedList = isDouble ? CONFIG.APPROVED_SIZES.DOUBLE : CONFIG.APPROVED_SIZES.SINGLE;
+          const isApproved = approvedList.includes(size);
+          outputData[currentRow][COLUMNS.SHOW_VARIANT - 1] = isApproved ? 'true' : 'false';
         }
       }
     }
-    
-    // Images (skip for suite 4)
-    if (suite.id !== 4) {
-      productImages.forEach((imageUrl, imgIdx) => {
-        const imgRow = baseRow + imgIdx;
-        if (imgRow < baseRow + suite.sectionSize) {
-          outputData[imgRow][COLUMNS.IMAGE_SRC - 1] = imageUrl;
-          outputData[imgRow][COLUMNS.IMAGE_POSITION - 1] = imgIdx + 1;
-          outputData[imgRow][COLUMNS.IMAGE_ALT - 1] = row[0];
-        }
-      });
-    }
+
+    // Images
+    productImages.forEach((imageUrl, imgIdx) => {
+      const imgRow = baseRow + imgIdx;
+      if (imgRow < baseRow + suite.sectionSize) {
+        outputData[imgRow][COLUMNS.IMAGE_SRC - 1] = imageUrl;
+        outputData[imgRow][COLUMNS.IMAGE_POSITION - 1] = imgIdx + 1;
+        outputData[imgRow][COLUMNS.IMAGE_ALT - 1] = row[0];
+      }
+    });
   });
-  
+
   dest.getRange(2, 1, totalRows, numCols).setValues(outputData);
   Logger.log(`✓ ${numProducts} products × ${suite.sectionSize} variants = ${totalRows} rows`);
-}
-
-function checkDuplicates() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Side Lites Output');
-  const handles = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
-  const seen = {};
-  const dupes = {};
-  
-  handles.forEach((row, i) => {
-    const handle = row[0];
-    if (handle) {
-      if (seen[handle]) {
-        dupes[handle] = (dupes[handle] || 0) + 1;
-      }
-      seen[handle] = true;
-    }
-  });
-  
-  Logger.log(JSON.stringify(dupes, null, 2));
 }
