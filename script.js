@@ -2,6 +2,11 @@
 // CONFIGURATION
 // ============================================
 const CONFIG = {
+  SUITE_4_HEADERS: [
+  'Handle', 'Title', 'Variant SKU', 'Variant Price', 
+  'Option1 Value', 'metafield.custom.show_variant'
+],
+
   STATIC_VALUES: {
     VENDOR: "AlpadaDoors",
     PRODUCT_CATEGORY: "Hardware > Building Materials > Doors > Home Doors",
@@ -20,8 +25,28 @@ const CONFIG = {
   },
 
   METAFIELDS: {
-    MATERIAL: "Steel Glass",
-    COLOR: "Black" 
+    COLOR: "matte-black-ral-7021; grey-blue-ral-5008; sepia-brown-ral-8014; olive-gray-ral-7002; pebble-gray-ral-7032; window-gray-ral-7040; pure-white-ral-9010",
+    DOOR_GLASS_FINISH: "ribbed-veritcal; ribbed-horizontal; grey-glass; clear; frost; opaque",             
+    DOOR_MATERIAL: "steel; glass",         
+    DOOR_SUITABLE_LOCATION: "front",        
+    DOOR_SURFACE_FINISH: "",
+    GLAZING_TYPE: "",
+    MATERIAL: "",
+    STYLE: ""
+  },
+
+  REPEATABLE_IMAGES: {
+    EXTERIOR_ARCHED: [
+      'https://cdn.shopify.com/s/files/1/0633/0558/0744/files/arched-interior-french-double-doors-3.webp?v=1762696444',
+      'https://cdn.shopify.com/s/files/1/0633/0558/0744/files/arched-interior-french-double-doors-4.webp?v=1762696445'
+    ]
+  },
+
+  CONSTANT_SIZES: {
+    SUITE_2: {
+      SINGLE: ['24"W x 80"H Door', '28"W x 80"H Door', '30"W x 80"H Door', '32"W x 80"H Door', '32"W x 81"H Door', '32"W x 96"H Door', '34"W x 96"H Door', '36"W x 80"H Door', '36"W x 96"H Door', '38"W x 96"H Door', '40"W x 96"H Door', '42"W x 96"H Door'],
+      DOUBLE: ['48"W x 80"H Doors', '56"W x 80"H Doors', '60"W x 80"H Doors', '64"W x 80"H Doors', '60"W x 96"H Doors', '64"W x 96"H Doors', '68"W x 96"H Doors', '72"W x 80"H Doors', '72"W x 96"H Doors', '76"W x 96"H Doors', '80"W x 96"H Doors', '84"W x 96"H Doors']
+    }
   },
   
   PRICE_MARKUP: 1.20, // +20% for compare price
@@ -59,13 +84,15 @@ const COLUMNS = {
   DOOR_TYPE: 48,
   NUMBER_OF_LITES: 49,
   COLOR: 50,
-  DOOR_GLASS_FINISH: 51,
-  DOOR_MATERIAL: 52,
-  DOOR_SURFACE_FINISH: 53,
-  STYLE: 54,
-  VARIANT_IMAGE: 59,
-  VARIANT_WEIGHT_UNIT: 60,
-  STATUS: 63
+  DOOR_APPLICATION: 51,            
+  DOOR_GLASS_FINISH: 52,             
+  DOOR_MATERIAL: 53,                 
+  DOOR_SUITABLE_LOCATION: 54,        
+  DOOR_SURFACE_FINISH: 55,           
+  STYLE: 56,                      
+  VARIANT_IMAGE: 61,                
+  VARIANT_WEIGHT_UNIT: 62,           
+  STATUS: 65   
 };
 
 const SHOPIFY_HEADERS = [
@@ -81,42 +108,15 @@ const SHOPIFY_HEADERS = [
   "Google Shopping / Custom Label 2", "Google Shopping / Custom Label 3", "Google Shopping / Custom Label 4",
   "Collection (product.metafields.custom.collection)", "Door Style (product.metafields.custom.door_style)",
   "Door Type (product.metafields.custom.door_type)", "Number of Lites (product.metafields.custom.number_of_lite)",
-  "Color (product.metafields.shopify.color-pattern)", "Door glass finish (product.metafields.shopify.door-glass-finish)",
-  "Door material (product.metafields.shopify.door-material)", "Door surface finish (product.metafields.shopify.door-surface-finish)",
+  "Color (product.metafields.shopify.color-pattern)", "Door application (product.metafields.shopify.door-application)", 
+  "Door glass finish (product.metafields.shopify.door-glass-finish)", "Door material (product.metafields.shopify.door-material)",
+  "Door suitable location (product.metafields.shopify.door-suitable-location)", "Door surface finish (product.metafields.shopify.door-surface-finish)",
   "Style (product.metafields.shopify.style)", "Complementary products (product.metafields.shopify--discovery--product_recommendation.complementary_products)",
   "Related products (product.metafields.shopify--discovery--product_recommendation.related_products)",
   "Related products settings (product.metafields.shopify--discovery--product_recommendation.related_products_display)",
   "Search product boosts (product.metafields.shopify--discovery--product_search_boost.queries)",
   "Variant Image", "Variant Weight Unit", "Variant Tax Code", "Cost per item", "Status"
 ];
-
-// ============================================
-// SUITE MANAGEMENT
-// ============================================
-function readSuites() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Suites');
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
-
-  return data
-    .filter(row => row[1] === true)
-    .map(row => {
-      // Debug: log what's in column K
-      Logger.log(`🔍 Suite "${row[2]}" - Column K (row[10]): "${row[10]}" (type: ${typeof row[10]}, length: ${row[10]?.length})`);
-
-      return {
-        id: row[0],
-        name: row[2],
-        destSheet: row[3],
-        sourceFileId: row[4],
-        sourceSheet: row[5],
-        startRow: row[6],
-        endRow: row[7],
-        handleSuffix: row[8],
-        sectionSize: row[9],
-        skuSheet: row[10] || null
-      };
-    });
-}
 
 function runSuite() {
   const start = new Date();
@@ -143,9 +143,47 @@ function runSuite() {
 }
 
 // ============================================
+// SUITE MANAGEMENT
+// ============================================
+function readSuites() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Suites');
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getValues();
+
+  return data
+    .filter(row => row[1] === true)
+    .map(row => {
+      // Debug: log what's in column K
+      Logger.log(`🔍 Suite "${row[2]}" - Column K (row[10]): "${row[10]}" (type: ${typeof row[10]}, length: ${row[10]?.length})`);
+
+      return {
+        id: row[0],
+        name: row[2],
+        destSheet: row[3],
+        sourceFileId: row[4],
+        sourceSheet: row[5],
+        startRow: row[6],
+        endRow: row[7],
+        handleSuffix: row[8],
+        sectionSize: row[9],
+        skuSheet: row[10] || null,
+        published: row[11] === true
+      };
+    });
+}
+
+// ============================================
 // SIZE & PRICE & WEIGHTS
 // ============================================
 function readSizesFromSource(suite) {
+  // Check for constant sizes first
+  if (suite.id === 5 && CONFIG.CONSTANT_SIZES.SUITE_2) {
+    return {
+      isConstant: true,
+      constantSizes: CONFIG.CONSTANT_SIZES.SUITE_2
+    };
+  }
+  
+  // Original logic for reading from sheet
   try {
     const sourceSS = SpreadsheetApp.openById(suite.sourceFileId);
     const sizesSheet = sourceSS.getSheetByName('Variants');
@@ -158,99 +196,70 @@ function readSizesFromSource(suite) {
     const lastRow = sizesSheet.getLastRow();
     if (lastRow < 3) return null;
 
-     // Read from B3 onwards (columns B-H)
     const allData = sizesSheet.getRange(3, 2, lastRow - 2, 7).getValues();
 
     return {
+      isConstant: false,
       columns: {
-        size_exterior: 0,           // Column B
-        price_exterior: 1,          // Column C
-        weights_exterior: 2,        // Column D
-        size_exterior_double: 4,    // Column F
-        price_exterior_double: 5,   // Column G
-        weights_exterior_double: 6  // Column H
+        size_exterior: 0,
+        price_exterior: 1,
+        weights_exterior: 2,
+        size_exterior_double: 4,
+        price_exterior_double: 5,
+        weights_exterior_double: 6
       },
       data: allData
     };
   } catch (e) {
-      Logger.log(`⚠️ Error reading sizes: ${e.message}`);
-      return null;
-    }
+    Logger.log(`⚠️ Error reading sizes: ${e.message}`);
+    return null;
   }
+}
 
 // ============================================
 // COPY SKU FROM OLD TABS
 // ============================================
 function readSKUsFromSource(suite) {
-  Logger.log(`📦 SKU sheet config: "${suite.skuSheet}"`);
-
-  if (!suite.skuSheet) {
-    Logger.log('📦 No SKU sheet configured - skipping');
-    return {};
-  }
+  if (!suite.skuSheet) return suite.id === 2 ? [] : {};
 
   try {
-    // Read from active spreadsheet (same file), not source file
     const activeSS = SpreadsheetApp.getActiveSpreadsheet();
     const skuSheet = activeSS.getSheetByName(suite.skuSheet);
-
-    if (!skuSheet) {
-      Logger.log(`⚠️ SKU sheet "${suite.skuSheet}" not found`);
-      return {};
-    }
+    if (!skuSheet) return suite.id === 2 ? [] : {};
 
     const lastRow = skuSheet.getLastRow();
-    Logger.log(`📦 SKU sheet has ${lastRow} rows`);
+    if (lastRow < 2) return suite.id === 2 ? [] : {};
 
-    if (lastRow < 2) return {};
-
-    // Read columns A (handle) and R (SKU)
     const data = skuSheet.getRange(2, 1, lastRow - 1, 18).getValues();
 
+    if (suite.id === 2) {
+      const SOURCE_SECTION_SIZE = 100; // Original size in source
+      const skusByProduct = [];
+      for (let i = 0; i < data.length; i += SOURCE_SECTION_SIZE) {
+        const productSkus = data.slice(i, i + SOURCE_SECTION_SIZE)
+          .map(row => row[17])
+          .filter(sku => sku)
+          .slice(0, suite.sectionSize);
+        skusByProduct.push(productSkus);
+      }
+      return skusByProduct;
+    }
+
     const skuMap = {};
-    const handleCounts = {};
-    let totalMapped = 0;
-
     data.forEach(row => {
-      const handle = row[0];  // Column A
-      const sku = row[17];    // Column R
-
+      const handle = row[0];
+      const sku = row[17];
       if (handle && sku) {
-        let cleanHandle = handle.toString().trim();
-        const cleanSku = sku.toString().trim();
-
-        // Remove common suffixes (-exterior, -test, -ext, etc.) to match base handles
-        cleanHandle = cleanHandle.replace(/-(exterior|test|ext|int|interior)$/i, '');
-
-        // Initialize array for new handle
-        if (!skuMap[cleanHandle]) {
-          skuMap[cleanHandle] = [];
-          handleCounts[cleanHandle] = 0;
-        }
-
-        // Only keep first suite.sectionSize SKUs per handle (memory optimization)
-        if (handleCounts[cleanHandle] < suite.sectionSize) {
-          skuMap[cleanHandle].push(cleanSku);
-          handleCounts[cleanHandle]++;
-          totalMapped++;
+        let cleanHandle = handle.toString().trim().replace(/-(exterior|test|ext|int|interior)$/i, '');
+        if (!skuMap[cleanHandle]) skuMap[cleanHandle] = [];
+        if (skuMap[cleanHandle].length < suite.sectionSize) {
+          skuMap[cleanHandle].push(sku.toString().trim());
         }
       }
     });
-
-    const handleCount = Object.keys(skuMap).length;
-    Logger.log(`📦 Loaded ${totalMapped} SKUs for ${handleCount} handles from "${suite.skuSheet}"`);
-
-    // Show sample
-    if (handleCount > 0) {
-      const sampleHandle = Object.keys(skuMap)[0];
-      Logger.log(`  Sample: ${sampleHandle} -> [${skuMap[sampleHandle].slice(0, 3).join(', ')}...]`);
-    }
-
     return skuMap;
-
   } catch (e) {
-    Logger.log(`⚠️ Error reading SKUs: ${e.message}`);
-    return {};
+    return suite.id === 2 ? [] : {};
   }
 }
 
@@ -277,13 +286,14 @@ function parseImageUrl(url) {
     handle = nameWithoutExt.replace(/-closed$/, '');
   }
   
-  return { url: url.trim(), handle: handle.toLowerCase(), type };
+  return { url: url.trim(), handle: normalizeHandle(handle), type };
 }
 
-function readImageLinks(sourceFileId) {
+function readImageLinks(sourceFileId, suite) {
   try {
     const sourceSS = SpreadsheetApp.openById(sourceFileId);
     const imagesSheet = sourceSS.getSheetByName('Images Links');
+    Logger.log(`🖼️ Reading images from file: https://docs.google.com/spreadsheets/d/${sourceFileId} (sheet: ${imagesSheet ? imagesSheet.getName() : 'N/A'})`);
     
     if (!imagesSheet) {
       Logger.log('⚠️ Images Links sheet not found');
@@ -293,13 +303,82 @@ function readImageLinks(sourceFileId) {
     const lastRow = imagesSheet.getLastRow();
     if (lastRow < 2) return [];
     
-    const urls = imagesSheet.getRange(2, 1, lastRow - 1, 1).getValues()
-      .map(row => row[0])
-      .filter(url => url && url.toString().trim());
+    let columnIndex = 1;
     
-    return urls
+    if (suite?.id === 2) {
+      columnIndex = 2;
+    }
+    
+    const numRows = lastRow - 1;
+    const dataRange = imagesSheet.getRange(2, columnIndex, numRows, 1);
+    const rawValues = dataRange.getValues();
+    const richValues = dataRange.getRichTextValues();
+    
+    if (suite?.id === 2) {
+      const sampleSize = Math.min(numRows, 5);
+      if (sampleSize > 0) {
+        const sampleRange = imagesSheet.getRange(2, columnIndex, sampleSize, 1);
+        const sampleValues = sampleRange.getValues().map(row => row[0]);
+        const sampleDisplay = sampleRange.getDisplayValues().map(row => row[0]);
+        const sampleFormulas = sampleRange.getFormulas().map(row => row[0]);
+        const sampleRich = sampleRange.getRichTextValues().map(row => {
+          const rich = row[0];
+          return rich ? { text: rich.getText(), url: rich.getLinkUrl() } : null;
+        });
+      }
+    }
+    
+    let urls = rawValues.map((row, idx) => {
+      const value = row[0];
+      if (value && value.toString().trim()) {
+        return value.toString().trim();
+      }
+      
+      const rich = richValues[idx] && richValues[idx][0];
+      if (rich) {
+        const linkUrl = rich.getLinkUrl();
+        if (linkUrl) {
+          return linkUrl.trim();
+        }
+        const text = rich.getText();
+        if (text && text.trim()) {
+          return text.trim();
+        }
+      }
+      return null;
+    }).filter(url => url && url.toString().trim());
+    
+    if (suite?.id === 2 && urls.length === 0 && columnIndex !== 1) {
+      Logger.log('🖼️ Suite 2 fallback to column 1 (Side Lites column empty)');
+      columnIndex = 1;
+      const fallbackRange = imagesSheet.getRange(2, columnIndex, lastRow - 1, 1);
+      const fallbackRaw = fallbackRange.getValues();
+      const fallbackRich = fallbackRange.getRichTextValues();
+      urls = fallbackRaw.map((row, idx) => {
+        const value = row[0];
+        if (value && value.toString().trim()) {
+          return value.toString().trim();
+        }
+        const rich = fallbackRich[idx] && fallbackRich[idx][0];
+        if (rich) {
+          const linkUrl = rich.getLinkUrl();
+          if (linkUrl) return linkUrl.trim();
+          const text = rich.getText();
+          if (text && text.trim()) return text.trim();
+        }
+        return null;
+      }).filter(url => url && url.toString().trim());
+    }
+    
+    const uniqueUrls = Array.from(new Set(urls.map(url => url.toString().trim())));
+    
+    Logger.log(`🖼️ Collected ${urls.length} raw / ${uniqueUrls.length} unique image URL(s) from column ${columnIndex}`);
+    
+    const parsed = uniqueUrls
       .map(url => parseImageUrl(url))
       .filter(img => img !== null);
+    
+    return parsed;
     
   } catch (e) {
     Logger.log(`⚠️ Error reading images: ${e.message}`);
@@ -311,16 +390,18 @@ function buildImageHash(imageLinks) {
   const hash = {};
   
   imageLinks.forEach(img => {
-    if (!hash[img.handle]) {
-      hash[img.handle] = { open: null, closed: null, others: [] };
+    const normalizedHandle = normalizeHandle(img.handle);
+    
+    if (!hash[normalizedHandle]) {
+      hash[normalizedHandle] = { open: null, closed: null, others: [] };
     }
     
     if (img.type === 'open') {
-      hash[img.handle].open = img.url;
+      hash[normalizedHandle].open = img.url;
     } else if (img.type === 'closed') {
-      hash[img.handle].closed = img.url;
+      hash[normalizedHandle].closed = img.url;
     } else {
-      hash[img.handle].others.push(img.url);
+      hash[normalizedHandle].others.push(img.url);
     }
   });
   
@@ -328,20 +409,34 @@ function buildImageHash(imageLinks) {
 }
 
 function getProductImages(imageHash, handle) {
+  const normalizedHandle = normalizeHandle(handle);
+  const productTokens = tokenizeHandle(normalizedHandle);
   // Try exact match first (O(1))
-  if (imageHash[handle]) {
-    return sortImages(imageHash[handle]);
+  if (imageHash[normalizedHandle]) {
+    return sortImages(imageHash[normalizedHandle]);
   }
   
   // Fuzzy match (only runs if no exact match)
   const matches = { open: null, closed: null, others: [] };
   
   for (const imgHandle in imageHash) {
-    if (handle.includes(imgHandle) || imgHandle.includes(handle)) {
+    if (normalizedHandle.includes(imgHandle) || imgHandle.includes(normalizedHandle)) {
       const imgs = imageHash[imgHandle];
       if (imgs.open && !matches.open) matches.open = imgs.open;
       if (imgs.closed && !matches.closed) matches.closed = imgs.closed;
       matches.others.push(...imgs.others);
+    }
+  }
+  
+  if (!matches.open && !matches.closed && matches.others.length === 0 && productTokens.length > 0) {
+    for (const imgHandle in imageHash) {
+      const imageTokens = tokenizeHandle(imgHandle);
+      if (imageTokens.every(token => productTokens.includes(token))) {
+        const imgs = imageHash[imgHandle];
+        if (imgs.open && !matches.open) matches.open = imgs.open;
+        if (imgs.closed && !matches.closed) matches.closed = imgs.closed;
+        matches.others.push(...imgs.others);
+      }
     }
   }
   
@@ -373,43 +468,109 @@ function generateHandle(title, collection, suffix) {
     .replace(/^-|-$/g, '');
 }
 
+function normalizeHandle(handle) {
+  if (!handle) return '';
+  
+  return handle
+    .toString()
+    .toLowerCase()
+    .replace(/side[\s_-]?lite(s)?/g, (match, plural) => plural ? 'side-lites' : 'side-lite')
+    .replace(/--+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function tokenizeHandle(handle) {
+  return normalizeHandle(handle)
+    .split('-')
+    .filter(Boolean);
+}
+
 // Wrapping description from brief in tag <p>
 function wrapDescription(text) {
   if (!text) return '';
-  
+
   const str = text.toString().trim();
-  
+
   // Check if already has <p> tag
   if (str.includes('<p>') || str.includes('<p ')) {
     return str;
   }
-  
+
   // Wrap in <p> tags
   return `<p>${str}</p>`;
+}
+
+// Extract Number of Lites from title
+// Equivalent to Excel formula: =IFERROR(LEFT(B2, SEARCH("Lite", B2) + 3), "")
+function extractNumberOfLites(title) {
+  if (!title || typeof title !== 'string') {
+    return '';
+  }
+
+  const liteIndex = title.indexOf('Lite');
+  if (liteIndex === -1) {
+    return '';
+  }
+
+  // Excel SEARCH returns 1-indexed position, +3 extends past start of "Lite"
+  // In JS (0-indexed): substring(0, liteIndex + 4) captures text up to "Lite" + first 3 chars
+  // This captures patterns like "3 Lite", "Full Lite", etc.
+  return title.substring(0, liteIndex + 4);
 }
 
 // ============================================
 // PRODUCT DATA MAPPING
 // ============================================
-function fillProductData(outputRow, sourceRow, handle) {
+function fillProductData(outputRow, sourceRow, handle, published) {
+  const type = sourceRow[2].toString().toLowerCase();
+  let doorApplication = "internal";
+  if (type.includes('exterior')) {
+    doorApplication = "external";
+  }
+  
   outputRow[COLUMNS.HANDLE - 1] = handle;
   outputRow[COLUMNS.TITLE - 1] = sourceRow[0];
   outputRow[COLUMNS.BODY_HTML - 1] = wrapDescription(sourceRow[1]);
+  outputRow[COLUMNS.VENDOR - 1] = CONFIG.STATIC_VALUES.VENDOR;
+  outputRow[COLUMNS.PRODUCT_CATEGORY - 1] = CONFIG.STATIC_VALUES.PRODUCT_CATEGORY;
   outputRow[COLUMNS.TYPE - 1] = sourceRow[2];
   outputRow[COLUMNS.TAGS - 1] = sourceRow[7];
+  outputRow[COLUMNS.PUBLISHED - 1] = published;
+  outputRow[COLUMNS.OPTION1_NAME - 1] = "Size";
+  outputRow[COLUMNS.VARIANT_INVENTORY_QTY - 1] = CONFIG.VARIANT_DEFAULTS.INVENTORY_BASE;
+  outputRow[COLUMNS.GIFT_CARD - 1] = false;
+  outputRow[COLUMNS.GOOGLE_PRODUCT_CATEGORY - 1] = CONFIG.STATIC_VALUES.GOOGLE_PRODUCT_CATEGORY;
   outputRow[COLUMNS.COLLECTION - 1] = sourceRow[3];
   outputRow[COLUMNS.DOOR_TYPE - 1] = sourceRow[4];
   outputRow[COLUMNS.DOOR_STYLE - 1] = sourceRow[5];
+  outputRow[COLUMNS.NUMBER_OF_LITES - 1] = extractNumberOfLites(sourceRow[0]);
   outputRow[COLUMNS.COLOR - 1] = CONFIG.METAFIELDS.COLOR;
-  outputRow[COLUMNS.DOOR_MATERIAL - 1] = CONFIG.METAFIELDS.MATERIAL;
-  outputRow[COLUMNS.VENDOR - 1] = CONFIG.STATIC_VALUES.VENDOR;
-  outputRow[COLUMNS.PRODUCT_CATEGORY - 1] = CONFIG.STATIC_VALUES.PRODUCT_CATEGORY;
-  outputRow[COLUMNS.PUBLISHED - 1] = true;
-  outputRow[COLUMNS.OPTION1_NAME - 1] = "Size";
-  outputRow[COLUMNS.GIFT_CARD - 1] = false;
-  outputRow[COLUMNS.GOOGLE_PRODUCT_CATEGORY - 1] = CONFIG.STATIC_VALUES.GOOGLE_PRODUCT_CATEGORY;
-  outputRow[COLUMNS.VARIANT_INVENTORY_QTY - 1] = CONFIG.VARIANT_DEFAULTS.INVENTORY_BASE;
-  outputRow[COLUMNS.STATUS - 1] = "active";
+  outputRow[COLUMNS.DOOR_APPLICATION - 1] = doorApplication;
+  outputRow[COLUMNS.DOOR_GLASS_FINISH - 1] = CONFIG.METAFIELDS.DOOR_GLASS_FINISH;
+  outputRow[COLUMNS.DOOR_MATERIAL - 1] = CONFIG.METAFIELDS.DOOR_MATERIAL;
+  outputRow[COLUMNS.DOOR_SUITABLE_LOCATION - 1] = CONFIG.METAFIELDS.DOOR_SUITABLE_LOCATION;
+  outputRow[COLUMNS.DOOR_SURFACE_FINISH - 1] = CONFIG.METAFIELDS.DOOR_SURFACE_FINISH;
+  outputRow[COLUMNS.STYLE - 1] = formatStyleMetafield(sourceRow[45] || sourceRow[5]); 
+  outputRow[COLUMNS.STATUS - 1] = published ? "active" : "draft";
+
+}
+
+function formatStyleMetafield(value) {
+  if (!value) return '';
+  return value.toString()
+    .replace(/([a-z])([A-Z])/g, '$1; $2')
+    .split(/\s*[;,]\s*|\n/)
+    .map(s => s.trim().toLowerCase().replace(/\s+/g, '-'))
+    .filter(s => s)
+    .join('; ');
+}
+
+function calculateSuite2Price(sizeString) {
+  const match = sizeString.match(/(\d+)"W x (\d+)"H/);
+  if (!match) return null;
+  const width = parseInt(match[1]);
+  const height = parseInt(match[2]);
+  return ((width * height) * 0.34 + 1000) * 1.5;
 }
 
 // ============================================
@@ -428,133 +589,308 @@ function fillVariantData(outputRow, isFirst, isLast, sizeData) {
     outputRow[COLUMNS.VARIANT_INVENTORY_QTY - 1] = CONFIG.VARIANT_DEFAULTS.INVENTORY_VARIANT;
   }
   
-  if (isLast && sizeData?.isCustomSize) {
+  if (isFirst && sizeData?.isCustomSize) {
     outputRow[COLUMNS.OPTION1_VALUE - 1] = CONFIG.STATIC_VALUES.CUSTOM_SIZE_LABEL;
-    if (sizeData.price) {
-      const price = sizeData.price;
-      outputRow[COLUMNS.VARIANT_PRICE - 1] = price;
-      outputRow[COLUMNS.VARIANT_COMPARE_PRICE - 1] = Math.round(price * CONFIG.PRICE_MARKUP * 100) / 100;
-    }
-    if (sizeData.weight) {
-      outputRow[COLUMNS.VARIANT_GRAMS - 1] = Math.round(sizeData.weight * CONFIG.WEIGHT_GRAMS_TO_LBS);
-    }
+    if (sizeData.price) outputRow[COLUMNS.VARIANT_PRICE - 1] = sizeData.price;
+    if (sizeData.weight) outputRow[COLUMNS.VARIANT_GRAMS - 1] = Math.round(sizeData.weight * CONFIG.WEIGHT_GRAMS_TO_LBS);
   } else {
-    if (sizeData?.size) {
-      outputRow[COLUMNS.OPTION1_VALUE - 1] = sizeData.size;
-    }
+    if (sizeData?.size) outputRow[COLUMNS.OPTION1_VALUE - 1] = sizeData.size;
     if (sizeData?.price) {
-      const price = sizeData.price;
-      outputRow[COLUMNS.VARIANT_PRICE - 1] = price;
-      outputRow[COLUMNS.VARIANT_COMPARE_PRICE - 1] = Math.round(price * CONFIG.PRICE_MARKUP * 100) / 100;
+      outputRow[COLUMNS.VARIANT_PRICE - 1] = sizeData.price;
+      outputRow[COLUMNS.VARIANT_COMPARE_PRICE - 1] = Math.round(sizeData.price * CONFIG.PRICE_MARKUP * 100) / 100;
     }
-    if (sizeData?.weight) {
-      outputRow[COLUMNS.VARIANT_GRAMS - 1] = Math.round(sizeData.weight * CONFIG.WEIGHT_GRAMS_TO_LBS);
-    }
+    if (sizeData?.weight) outputRow[COLUMNS.VARIANT_GRAMS - 1] = Math.round(sizeData.weight * CONFIG.WEIGHT_GRAMS_TO_LBS);
   }
 }
 
-// ============================================
-// MAIN COPY FUNCTION
-// ============================================
+
+function readSuite4Variants(sourceFileId) {
+  try {
+    const sourceSS = SpreadsheetApp.openById(sourceFileId);
+    const thisSheet = sourceSS.getSheetByName('THIS 1.0');
+    
+    if (!thisSheet) {
+      Logger.log('⚠️ THIS 1.0 sheet not found');
+      return [];
+    }
+    
+    const lastRow = thisSheet.getLastRow();
+    const lastCol = thisSheet.getLastColumn();
+    
+    // Read ALL headers
+    const headers = thisSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    Logger.log(`📋 ALL HEADERS (${headers.length} columns):`);
+    headers.forEach((h, i) => Logger.log(`  Col ${i+1}: "${h}"`));
+    
+    // Find columns
+    let skuCol = -1, priceCol = -1, sizeCol = -1;
+    headers.forEach((h, i) => {
+      const hLower = h.toString().toLowerCase();
+      if (hLower.includes('sku')) skuCol = i + 1;
+      if (hLower.includes('price') && !hLower.includes('compare')) priceCol = i + 1;
+      if (hLower.includes('option1') || (hLower.includes('size') && !hLower.includes('custom'))) sizeCol = i + 1;
+    });
+    
+    Logger.log(`✅ Found: SKU=col${skuCol}, Price=col${priceCol}, Size=col${sizeCol}`);
+    
+    if (priceCol === -1 || sizeCol === -1) {
+      Logger.log('❌ Cannot find required columns');
+      return [];
+    }
+    
+    // Read sample data
+    const sampleData = thisSheet.getRange(2, 1, Math.min(5, lastRow - 1), lastCol).getValues();
+    Logger.log(`📋 First 3 data rows:`);
+    sampleData.slice(0, 3).forEach((row, i) => {
+      Logger.log(`  Row ${i+2}: Price="${row[priceCol-1]}", Size="${row[sizeCol-1]}"`);
+    });
+    
+    // Read all variants
+    const maxCol = Math.max(priceCol, sizeCol);
+    const data = thisSheet.getRange(2, 1, lastRow - 1, maxCol).getValues();
+    
+    const variants = data.map(row => ({
+      price: row[priceCol - 1] || '',
+      size: row[sizeCol - 1] || ''
+    }));
+    
+    Logger.log(`✅ Read ${variants.length} variants`);
+    
+    return variants;
+    
+  } catch (e) {
+    Logger.log(`❌ Error: ${e.message}`);
+    return [];
+  }
+}
+
+function readPriceFixedNewSizes(sourceFileId) {
+  try {
+    Logger.log(`🔍 Reading price_fixed_new from file: ${sourceFileId}`);
+    const sourceSS = SpreadsheetApp.openById(sourceFileId);
+    const priceFixedSheet = sourceSS.getSheetByName('price_fixed_new');
+    
+    if (!priceFixedSheet) {
+      Logger.log('⚠️ price_fixed_new sheet not found');
+      return new Map();
+    }
+    
+    const lastRow = priceFixedSheet.getLastRow();
+    Logger.log(`📊 price_fixed_new has ${lastRow} rows`);
+    
+    if (lastRow < 2) {
+      Logger.log('⚠️ price_fixed_new has no data rows');
+      return new Map();
+    }
+    
+    // Read columns: 3=SKU, 5=Size
+    const data = priceFixedSheet.getRange(2, 3, lastRow - 1, 3).getValues();
+    
+    const skuToSizeMap = new Map();
+    data.forEach((row, idx) => {
+      const sku = row[0] ? row[0].toString().trim() : '';
+      const size = row[2] ? row[2].toString().trim().toLowerCase() : '';
+      if (sku && size) {
+        skuToSizeMap.set(sku, size);
+      }
+    });
+    
+    Logger.log(`✅ Read ${skuToSizeMap.size} SKU-to-size mappings`);
+    const first5 = Array.from(skuToSizeMap.entries()).slice(0, 5);
+    Logger.log(`📋 First 5 SKU mappings: ${JSON.stringify(first5)}`);
+    
+    return skuToSizeMap;
+  } catch (e) {
+    Logger.log(`❌ Error reading price_fixed_new: ${e.message}`);
+    return new Map();
+  }
+}
+
+function fillSuite4ProductData(outputRow, sourceRow, handle, isFirst) {
+  outputRow[0] = handle;
+  if (isFirst) {
+    outputRow[1] = sourceRow[0]; // Title only on first variant
+  }
+}
+
+function fillSuite4VariantData(outputRow, absoluteIdx, relativeIdx, skuMap, handleWithoutSuffix, fixedPriceSkuMap, suite4Variants) {
+  if (!suite4Variants || absoluteIdx >= suite4Variants.length) {
+    Logger.log(`⚠️ Variant ${absoluteIdx} out of range (${suite4Variants?.length || 0} variants)`);
+    return;
+  }
+  
+  const variant = suite4Variants[absoluteIdx];
+  
+  // Variant SKU
+  let variantSku = '';
+  if (skuMap[handleWithoutSuffix]?.[relativeIdx]) {
+    variantSku = skuMap[handleWithoutSuffix][relativeIdx];
+    outputRow[2] = variantSku;
+  }
+  
+  // Variant Price
+  outputRow[3] = variant.price;
+  
+  // Option1 Value (Size)
+  outputRow[4] = variant.size;
+  
+  // metafield.custom.show_variant - check if SKU exists in fixedPriceSkuMap
+  const showVariant = fixedPriceSkuMap.has(variantSku);
+  outputRow[5] = showVariant ? 'true' : 'false';
+  
+  // Debug logging for first few variants
+  if (absoluteIdx < 3) {
+    Logger.log(`🔍 Variant ${absoluteIdx}: SKU="${variantSku}", Size="${variant.size}", Show="${showVariant}", InMap=${fixedPriceSkuMap.has(variantSku)}`);
+  }
+}
+
 function copyBriefs(suite) {
   const destSS = SpreadsheetApp.getActiveSpreadsheet();
   let dest = destSS.getSheetByName(suite.destSheet);
   
-  if (!dest) {
-    dest = destSS.insertSheet(suite.destSheet);
-  }
+  if (!dest) dest = destSS.insertSheet(suite.destSheet);
   
-  dest.getRange(1, 1, dest.getMaxRows(), 63).clearContent();
-  dest.getRange(1, 1, 1, SHOPIFY_HEADERS.length).setValues([SHOPIFY_HEADERS]);
+  dest.getRange(1, 1, dest.getMaxRows(), 65).clearContent();
+  
+  // Headers
+  const headers = suite.id === 4 ? CONFIG.SUITE_4_HEADERS : SHOPIFY_HEADERS;
+  dest.getRange(1, 1, 1, headers.length).setValues([headers]);
   
   const sourceSS = SpreadsheetApp.openById(suite.sourceFileId);
   const source = sourceSS.getSheetByName(suite.sourceSheet);
-  const sizesConfig = readSizesFromSource(suite);
-  const imageLinks = readImageLinks(suite.sourceFileId);
+  const sizesConfig = suite.id === 4 ? null : readSizesFromSource(suite);
+  const imageLinks = suite.id === 4 ? [] : readImageLinks(suite.sourceFileId, suite);
   const skuMap = readSKUsFromSource(suite);
+  const fixedPriceSkuMap = suite.id === 4 ? readPriceFixedNewSizes(suite.sourceFileId) : new Map();
+  const suite4Variants = suite.id === 4 ? readSuite4Variants(suite.sourceFileId) : null;
   
   const numProducts = suite.endRow - suite.startRow + 1;
-  const sourceData = source.getRange(suite.startRow, 2, numProducts, 8).getValues();
-  
+  const sourceData = source.getRange(suite.startRow, 2, numProducts, 46).getValues();
   const totalRows = numProducts * suite.sectionSize;
-  const outputData = Array(totalRows).fill(null).map(() => Array(63).fill(''));
+  const numCols = suite.id === 4 ? 6 : 65;
+  const outputData = Array(totalRows).fill(null).map(() => Array(numCols).fill(''));
   
   Logger.log(`📷 Parsed ${imageLinks.length} image URLs`);
   
-  // Build image hash once
-  const imageHash = buildImageHash(imageLinks);
+  const imageHash = suite.id === 2 ? null : buildImageHash(imageLinks);
   
   sourceData.forEach((row, i) => {
     const baseRow = i * suite.sectionSize;
     const handle = generateHandle(row[0], row[3], suite.handleSuffix);
-    const handleWithoutSuffix = generateHandle(row[0], row[3], ''); // For SKU lookup
-    const productImages = getProductImages(imageHash, handle);
-
-    // Debug: Log handle and SKU availability for all products
-    const skuCount = skuMap[handleWithoutSuffix] ? skuMap[handleWithoutSuffix].length : 0;
-    if (skuCount > 0) {
-      Logger.log(`✅ Product ${i+1}: "${handleWithoutSuffix}" - ${skuCount} SKUs found`);
-    } else {
-      Logger.log(`❌ Product ${i+1}: "${handleWithoutSuffix}" - NO SKUs found`);
+    const handleWithoutSuffix = generateHandle(row[0], row[3], '');
+    
+    // Image logic (skip for suite 4)
+    let productImages = [];
+    if (suite.id === 2) {
+      if (i < imageLinks.length && imageLinks[i]?.url) {
+        productImages = [imageLinks[i].url];
+      }
+    } else if (suite.id !== 4) {
+      productImages = getProductImages(imageHash, handle);
+      if (suite.id !== 1 && (row[2].toString().toLowerCase().includes('exterior') || 
+          row[5].toString().toLowerCase().includes('arched'))) {
+        productImages.push(...CONFIG.REPEATABLE_IMAGES.EXTERIOR_ARCHED);
+      }
     }
 
-    fillProductData(outputData[baseRow], row, handle);
+    // Fill product row
+    if (suite.id === 4) {
+      fillSuite4ProductData(outputData[baseRow], row, handle, true);
+    } else {
+      // ✅ Add this to fill product data for suite 1, 2, 3, 5, etc.
+      fillProductData(outputData[baseRow], row, handle, suite.published);
+    }
     
-    const isDouble = row[4].toString().toLowerCase().includes('double');
-    const colPrefix = isDouble ? '_double' : '';
-    
+    // Fill variants
     for (let j = 0; j < suite.sectionSize; j++) {
       const currentRow = baseRow + j;
       const isLast = (j === suite.sectionSize - 1);
       const isFirst = (j === 0);
       
-      outputData[currentRow][COLUMNS.HANDLE - 1] = handle;
+      outputData[currentRow][0] = handle;
       
-      let sizeData = null;
-
-      if (sizesConfig) {
-        if (isLast) {
-          const lastIdx = sizesConfig.data.length - 1;
-          if (lastIdx >= 0) {
-            sizeData = { 
-              isCustomSize: true,
-              price: sizesConfig.data[lastIdx][sizesConfig.columns[`price_exterior${colPrefix}`]],
-              weight: sizesConfig.data[lastIdx][sizesConfig.columns[`weights_exterior${colPrefix}`]]
-            };
+      if (suite.id === 4) {
+        const absoluteVariantIdx = i * suite.sectionSize + j;
+        fillSuite4VariantData(outputData[currentRow], absoluteVariantIdx, j, skuMap, handleWithoutSuffix, fixedPriceSkuMap, suite4Variants);
+      } else {
+        let sizeData = null;
+        if (sizesConfig) {
+          if (sizesConfig.isConstant) {
+            const isDouble = row[0].toString().toLowerCase().includes('double');
+            const sizeList = isDouble ? sizesConfig.constantSizes.DOUBLE : sizesConfig.constantSizes.SINGLE;
+            if (j < sizeList.length) {
+              sizeData = { size: sizeList[j], price: calculateSuite2Price(sizeList[j]) };
+            }
+          } else {
+            const isDouble = row[4].toString().toLowerCase().includes('double');
+            const colPrefix = isDouble ? '_double' : '';
+            if (isFirst) {
+              const lastIdx = sizesConfig.data.length - 1;
+              if (lastIdx >= 0) {
+                sizeData = { 
+                  isCustomSize: true,
+                  price: sizesConfig.data[lastIdx][sizesConfig.columns[`price_exterior${colPrefix}`]],
+                  weight: sizesConfig.data[lastIdx][sizesConfig.columns[`weights_exterior${colPrefix}`]]
+                };
+              }
+            } else if (j - 1 < sizesConfig.data.length) {
+              // normal size (offset by 1 since custom is first)
+              const dataRow = sizesConfig.data[j - 1];
+              sizeData = {
+                size: dataRow[sizesConfig.columns[`size_exterior${colPrefix}`]],
+                price: dataRow[sizesConfig.columns[`price_exterior${colPrefix}`]],
+                weight: dataRow[sizesConfig.columns[`weights_exterior${colPrefix}`]]
+              };
+            }
           }
-        } else if (j < sizesConfig.data.length) {
-          const dataRow = sizesConfig.data[j];
-          sizeData = {
-            size: dataRow[sizesConfig.columns[`size_exterior${colPrefix}`]],
-            price: dataRow[sizesConfig.columns[`price_exterior${colPrefix}`]],
-            weight: dataRow[sizesConfig.columns[`weights_exterior${colPrefix}`]]
-          };
         }
-      }
-      
-      fillVariantData(outputData[currentRow], isFirst, isLast, sizeData);
+        fillVariantData(outputData[currentRow], isFirst, isLast, sizeData);
 
-      // SKU mapping by handle (without suffix) and variant index
-      if (skuMap[handleWithoutSuffix] && skuMap[handleWithoutSuffix][j]) {
-        outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[handleWithoutSuffix][j];
-      }
+        // SKU mapping
+        if (suite.id === 2 && Array.isArray(skuMap)) {
+          if (skuMap[i]?.[j]) outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[i][j];
+        } else if (skuMap[handleWithoutSuffix]?.[j]) {
+          outputData[currentRow][COLUMNS.VARIANT_SKU - 1] = skuMap[handleWithoutSuffix][j];
+        }
 
-      // Variant images mapping
-      if (productImages.length > 0) {
-        outputData[currentRow][COLUMNS.VARIANT_IMAGE - 1] = productImages[0];
+        if (productImages.length > 0) {
+          outputData[currentRow][COLUMNS.VARIANT_IMAGE - 1] = productImages[0];
+        }
       }
     }
     
-    productImages.forEach((imageUrl, imgIdx) => {
-      const imgRow = baseRow + imgIdx;
-      if (imgRow < baseRow + suite.sectionSize) {
-        outputData[imgRow][COLUMNS.IMAGE_SRC - 1] = imageUrl;
-        outputData[imgRow][COLUMNS.IMAGE_POSITION - 1] = imgIdx + 1;
-        outputData[imgRow][COLUMNS.IMAGE_ALT - 1] = row[0];
-      }
-    });
+    // Images (skip for suite 4)
+    if (suite.id !== 4) {
+      productImages.forEach((imageUrl, imgIdx) => {
+        const imgRow = baseRow + imgIdx;
+        if (imgRow < baseRow + suite.sectionSize) {
+          outputData[imgRow][COLUMNS.IMAGE_SRC - 1] = imageUrl;
+          outputData[imgRow][COLUMNS.IMAGE_POSITION - 1] = imgIdx + 1;
+          outputData[imgRow][COLUMNS.IMAGE_ALT - 1] = row[0];
+        }
+      });
+    }
   });
   
-  dest.getRange(2, 1, totalRows, 63).setValues(outputData);
+  dest.getRange(2, 1, totalRows, numCols).setValues(outputData);
   Logger.log(`✓ ${numProducts} products × ${suite.sectionSize} variants = ${totalRows} rows`);
+}
+
+function checkDuplicates() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Side Lites Output');
+  const handles = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  const seen = {};
+  const dupes = {};
+  
+  handles.forEach((row, i) => {
+    const handle = row[0];
+    if (handle) {
+      if (seen[handle]) {
+        dupes[handle] = (dupes[handle] || 0) + 1;
+      }
+      seen[handle] = true;
+    }
+  });
+  
+  Logger.log(JSON.stringify(dupes, null, 2));
 }
